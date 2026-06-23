@@ -1,3 +1,4 @@
+import re
 import streamlit as st
 import fitz
 from dotenv import load_dotenv
@@ -20,7 +21,37 @@ def create_pdf(content):
 
 st.set_page_config(page_title="AI Resume Intelligence Platform")
 
-st.title("AI Resume Intelligence Platform")
+st.title("🤖 AI Resume Intelligence Platform")
+
+st.markdown(
+    """
+    Upload your resume and compare it against any job description using
+    Retrieval-Augmented Generation (RAG), ChromaDB, and Gemini AI.
+    """
+)
+st.sidebar.title("⚙️ AI Controls")
+
+st.sidebar.markdown("---")
+
+st.sidebar.markdown(
+    """
+    ### RAG Pipeline
+
+    📄 Resume Upload
+
+    ✂️ Chunking
+
+    🧠 Embeddings
+
+    🗄️ ChromaDB
+
+    🔍 Semantic Retrieval
+
+    🤖 Gemini 2.5 Flash
+    """
+)
+
+st.sidebar.markdown("---")
 st.markdown("""
 Analyze resumes against job descriptions using:
 
@@ -96,11 +127,9 @@ if uploaded_file:
     #chromadb
     client = chromadb.Client()
 
-    client = chromadb.Client()
+    
 
-    collection = client.get_or_create_collection(
-    name="resume_collection"
-)
+    
     collection = client.get_or_create_collection(
         name="resume_collection"
     )
@@ -110,17 +139,27 @@ if uploaded_file:
             embeddings=[embeddings[i].tolist()],
             ids=[str(i)]
     )
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        st.metric("Chunks", len(chunks))
+
+    with col2:
+        st.metric("Embedding Size", embeddings.shape[1])
+
+    with col3:
+        st.metric("Vector Records", collection.count())   
     # st.write("Number of chunks:", len(chunks))       
     # st.write("Embedding Shape:", embeddings.shape)
     # st.write("Stored in ChromaDB:", collection.count())
 
     #Resume preview
-    st.subheader("Extracted Resume Text")
-    st.text_area(
-        "Resume Content",
-        resume_text,
-        height=300
-    )
+    with st.expander("📄 View Extracted Resume Text"):
+        st.text_area(
+            "Resume Content",
+            resume_text,
+            height=300
+        )
 
     #jd input
     job_description = st.text_area(
@@ -180,7 +219,38 @@ if uploaded_file:
 
                 response = llm.invoke(prompt)
 
-                st.subheader("Analysis Result")
+                score_match = re.search(
+                    r'ATS Score:\s*(\d+)',
+                    response.content
+                )
+
+                if score_match:
+
+                    ats_score = int(score_match.group(1))
+
+                    col1, col2, col3 = st.columns(3)
+
+                    with col1:
+                        st.metric(
+                            "🎯 ATS Score",
+                            f"{ats_score}/100"
+                        )
+
+                    with col2:
+                        if ats_score >= 80:
+                            st.success("Excellent Match")
+                        elif ats_score >= 60:
+                            st.warning("Moderate Match")
+                        else:
+                            st.error("Needs Improvement")
+
+                    with col3:
+                        st.metric(
+                            "🔍 Retrieved Chunks",
+                            len(results["documents"][0])
+                        )
+
+                st.subheader("📊 ATS Analysis Report")
 
                 st.markdown(response.content)
                 pdf_file = create_pdf(response.content)
