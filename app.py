@@ -5,8 +5,18 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from sentence_transformers import SentenceTransformer
 import chromadb
+from reportlab.platypus import SimpleDocTemplate, Paragraph
+from reportlab.lib.styles import getSampleStyleSheet
 
 load_dotenv()
+
+def create_pdf(content):
+    pdf_file = "resume_analysis.pdf"
+    doc = SimpleDocTemplate(pdf_file)
+    styles = getSampleStyleSheet()
+    story = [Paragraph(content.replace("\n", "<br/>"), styles['BodyText'])]
+    doc.build(story)
+    return pdf_file
 
 st.set_page_config(page_title="AI Resume Intelligence Platform")
 
@@ -86,11 +96,11 @@ if uploaded_file:
     #chromadb
     client = chromadb.Client()
 
-    # Clear old data (avoids duplicate IDs during reruns)
-    try:
-        client.delete_collection("resume_collection")
-    except:
-        pass
+    client = chromadb.Client()
+
+    collection = client.get_or_create_collection(
+    name="resume_collection"
+)
     collection = client.get_or_create_collection(
         name="resume_collection"
     )
@@ -154,7 +164,7 @@ if uploaded_file:
 
                 Provide:
 
-                1. ATS Score
+                1. ATS Score (0-100) with explanation
                 2. Matching Skills
                 3. Missing Skills
                 4. Resume Improvements
@@ -173,3 +183,12 @@ if uploaded_file:
                 st.subheader("Analysis Result")
 
                 st.markdown(response.content)
+                pdf_file = create_pdf(response.content)
+
+                with open(pdf_file, "rb") as pdf:
+                    st.download_button(
+                        label="📄 Download PDF Report",
+                        data=pdf,
+                        file_name="resume_analysis.pdf",
+                        mime="application/pdf"
+                   )
